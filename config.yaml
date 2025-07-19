@@ -1,3 +1,33 @@
 max_gen_tokens: 300
 max_mcq_tokens: 5
 system_prompt: 'You are a helpful assistant.'
+
+# GGUF Models Configuration
+gguf_models:
+  llama3.2-1b-instruct:
+    path: "/path/to/llama3.2-1b-instruct.Q4_K_M.gguf"
+    config:
+      n_ctx: 4096
+      n_threads: 8
+      n_gpu_layers: 0
+      temperature: 0.0
+      verbose: false
+  
+  # mistral-7b-instruct:
+  #   path: "/path/to/mistral-7b-instruct-v0.2.Q4_K_M.gguf"
+  #   config:
+  #     n_ctx: 8192
+  #     n_threads: 8
+  #     n_gpu_layers: 0
+  #     temperature: 0.0
+  #     verbose: false
+  
+  # Add more GGUF models as needed
+  # custom-model:
+  #   path: "/path/to/your-custom-model.gguf"
+  #   config:
+  #     n_ctx: 4096
+  #     n_threads: 8
+  #     n_gpu_layers: 0  # Set > 0 if you have GPU support
+  #     temperature: 0.0
+  #     verbose: false

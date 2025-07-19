@@ -4,8 +4,7 @@ import time
 import yaml
 import tiktoken
 from openai import OpenAI
-from google import genai
-from google.genai import types
+from .gguf_utils import generate_gguf_response, get_gguf_model_info
 
 
 def count_tokens(text):
@@ -48,6 +47,7 @@ def generate_message(
     max_tokens=None,
     temperature=0,
     max_retries=10,
+    gguf_models_config=None,
 ):
     retries = 0
     while retries < max_retries:
@@ -100,18 +100,31 @@ def generate_message(
                 )
                 return completion.choices[0].message.content
             elif model_type == "gemini":
-                client = genai.Client(api_key=os.getenv("GENAI_API_KEY"))
-                config = types.GenerateContentConfig(
-                    system_instruction=messages["system_instruction"],
-                    # max_output_tokens=max_tokens,
-                    # temperature=temperature,
+                # Gemini support requires google.generativeai - skipping for GGUF testing
+                raise ValueError("Gemini models not configured for this test")
+            elif model_type == "gguf":
+                if not gguf_models_config:
+                    raise ValueError("GGUF models config required for GGUF model type")
+                
+                model_path, model_config = get_gguf_model_info(model_id, gguf_models_config)
+                
+                # Add system prompt to messages if provided
+                if system_prompt and messages:
+                    if isinstance(messages, list) and len(messages) > 0:
+                        # Insert system message at the beginning
+                        messages = [{"role": "system", "content": system_prompt}] + messages
+                    elif isinstance(messages, str):
+                        messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": messages}]
+                
+                response_text = generate_gguf_response(
+                    model_path=model_path,
+                    model_config=model_config,
+                    messages=messages,
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                    max_retries=max_retries,
                 )
-                response = client.models.generate_content(
-                    model=model_id,
-                    contents=messages["messages"],
-                    config=config,
-                )
-                return response.text
+                return response_text
             else:
                 raise ValueError(f"Invalid model_type: {model_type}")
 
@@ -146,6 +159,8 @@ def extract_multi_turn_conversation(multi_turn_message, turn_number=3, model_typ
         elif model_type == "gemini":
             gemini_role = {"user": "user", "assistant": "model"}.get(role, "user")
             message.append({"role": gemini_role, "parts": [{"text": str(content)}]})
+        elif model_type == "gguf":
+            message.append({"role": role, "content": content})
         else:
             raise ValueError(f"Invalid model_type: {model_type}")
         if len(message) == turn_number * 2:
@@ -184,7 +199,11 @@ def extract_multi_turn_message(turns_data, args, model_type):
     return "", multi_turn_message
 
 
-def get_model_info(model_name):
+def get_model_info(model_name, gguf_models_config=None):
+    # Check if this is a GGUF model first
+    if gguf_models_config and model_name in gguf_models_config:
+        return model_name, "gguf"
+    
     if model_name == "claude3s":
         model_id = "anthropic.claude-3-sonnet-20240229-v1:0"
     elif model_name == "claude3.5s":
@@ -225,8 +244,10 @@ def get_model_info(model_name):
         model_id = "gemini-2.5-flash-preview-04-17"
     elif model_name == "gemini2.5-pro":
         model_id = "gemini-2.5-pro-exp-03-25"
+    else:
+        model_id = model_name  # fallback to model_name as ID
 
-    # Fixed model_type detection to include gemini
+    # Fixed model_type detection to include gemini and gguf
     model_type = (
         "mistral"
         if "mistral" in model_name
@@ -236,7 +257,19 @@ def get_model_info(model_name):
             else (
                 "llama"
                 if "llama" in model_name
-                else "gpt" if "gpt" in model_name else "gemini" if "gemini" in model_name else None
+                else (
+                    "gpt" 
+                    if "gpt" in model_name 
+                    else (
+                        "gemini" 
+                        if "gemini" in model_name 
+                        else (
+                            "gguf"
+                            if gguf_models_config and model_name in gguf_models_config
+                            else None
+                        )
+                    )
+                )
             )
         )
     )

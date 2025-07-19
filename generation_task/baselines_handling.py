@@ -115,6 +115,7 @@ def handle_rag_task_implicit(
     task_id,
     conversation_list,
     multi_turn_message,
+    gguf_models_config=None,
 ):
 
     pref_sentence_scores = rag_data[task_id]["sentence_scores"]
@@ -158,6 +159,7 @@ def handle_selfcritic_task(
     model_id,
     model_type,
     max_tokens,
+    gguf_models_config=None,
 ):
     """create pref + multi turn conversations + question (get ZERO-SHOT answer)"""
     zero_shot_messages = get_question_prompt(
@@ -173,13 +175,13 @@ def handle_selfcritic_task(
         system_prompt=system_prompt,
         args=args,
     )
-    response_to_q = generate_message(client, model_id, model_type, system_prompt, zero_shot_messages, max_tokens)
+    response_to_q = generate_message(client, model_id, model_type, system_prompt, zero_shot_messages, max_tokens, gguf_models_config=gguf_models_config)
     critic_request = "Critique Request: Review your previous response to the user's question in the last conversation turn. Check if the response adheres or violates to any user preferences stated earlier in the conversation that is related to this query. Provide a critique on how well those preferences were followed. Give a critic of your response in 2 sentences. Answer in this format:\nCritic: "
 
     critic_messages = get_self_critic_prompt_critic(
         args, critic_request, preference, pref_generation, response_to_q, multi_inter_message, question, system_prompt
     )
-    critic = generate_message(client, model_id, model_type, system_prompt, critic_messages, max_tokens)
+    critic = generate_message(client, model_id, model_type, system_prompt, critic_messages, max_tokens, gguf_models_config=gguf_models_config)
 
     revision_request = f"Revision Request: Based on your critic, please rewrite your previous response to align more closely with the user's earlier stated preferences. Answer the question again: {question}. Answer in this format (just give updated response, don't include critic or any explanation):\nResponse: "
 
@@ -202,6 +204,7 @@ def handle_selfcritic_task(
         system_prompt=system_prompt,
         messages=revision_prompt,
         max_tokens=500,
+        gguf_models_config=gguf_models_config,
     )
 
     return response_to_q, final_response, critic
@@ -217,6 +220,7 @@ def handle_selfcritic_task_implicit(
     model_id,
     model_type,
     max_tokens,
+    gguf_models_config=None,
 ):
     """create pref + multi turn conversations + question (get ZERO-SHOT answer)"""
     zero_shot_messages = get_implicit_question_prompt(
@@ -229,7 +233,7 @@ def handle_selfcritic_task_implicit(
         remind=False,
         cot=False,
     )
-    response_to_q = generate_message(client, model_id, model_type, system_prompt, zero_shot_messages, max_tokens)
+    response_to_q = generate_message(client, model_id, model_type, system_prompt, zero_shot_messages, max_tokens, gguf_models_config=gguf_models_config)
     critic_request = "Critique Request: Review your previous response to the user's question in the last conversation turn. Check if the response adheres or violates to any user preferences stated earlier in the conversation that is related to this query. Provide a critique on how well those preferences were followed. Give a critic of your response in 2 sentences. Answer in this format:\nCritic: "
 
     critic_messages = get_self_critic_prompt_critic_implicit(
@@ -240,7 +244,7 @@ def handle_selfcritic_task_implicit(
         multi_inter_message=multi_inter_message,
         question=question,
     )
-    critic = generate_message(client, model_id, model_type, system_prompt, critic_messages, max_tokens)
+    critic = generate_message(client, model_id, model_type, system_prompt, critic_messages, max_tokens, gguf_models_config=gguf_models_config)
     revision_request = f"Revision Request: Based on your critic, please rewrite your previous response to align more closely with the user's earlier stated preferences. Answer the question again: {question}. Answer in this format (just give updated response, don't include critic or any explanation):\nResponse: "
 
     revision_message = get_self_critic_prompt_response_implicit(
@@ -260,6 +264,7 @@ def handle_selfcritic_task_implicit(
         system_prompt,
         revision_message,
         max_tokens=500,
+        gguf_models_config=gguf_models_config,
     )
 
     return response_to_q, self_critic_response, critic

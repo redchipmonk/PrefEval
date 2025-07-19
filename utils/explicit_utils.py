@@ -128,6 +128,8 @@ def create_user_pref_message(preference, model_type, system_prompt):
                 {"role": "user", "parts": [{"text": preference}]},
             ],
         }
+    elif model_type == "gguf":
+        user_message = [{"role": "user", "content": preference}]
     else:
         raise ValueError(f"Invalid model type: {model_type}")
 
@@ -215,6 +217,15 @@ def get_question_prompt(
         msgs.append({"role": "user", "parts": [{"text": question}]})
 
         return {"system_instruction": system_prompt, "messages": msgs}
+    elif model_type == "gguf":
+        messages = [
+            {"role": "user", "content": preference},
+            {"role": "assistant", "content": pref_generation},
+        ]
+        if multi_inter_message:
+            assert turn_number > 0
+            messages.extend(multi_inter_message)
+        messages.append({"role": "user", "content": question})
     else:
         raise ValueError(f"Invalid model type: {model_type}")
 

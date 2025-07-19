@@ -95,7 +95,8 @@ def main():
 
     try:
         client = boto3.client(service_name="bedrock-runtime", region_name="us-east-1")
-        model_id, model_type = get_model_info(args.model)
+        gguf_models_config = exp_configs.get("gguf_models", {})
+        model_id, model_type = get_model_info(args.model, gguf_models_config)
 
         # Extract inter multi-turn message
         multi_inter_message, multi_turn_message = extract_multi_turn_message(turns_data, args, model_type)
@@ -114,7 +115,8 @@ def main():
                 question = task["question"]
                 user_pref_msg = create_user_pref_message(preference, model_type, system_prompt)
                 pref_generation = generate_message(
-                    client, model_id, model_type, system_prompt, user_pref_msg, max_tokens
+                    client, model_id, model_type, system_prompt, user_pref_msg, max_tokens,
+                    gguf_models_config=gguf_models_config
                 )
             else:  # implicit mode
                 conversation = task["conversation"]
@@ -154,7 +156,8 @@ def main():
                         multi_turn_message=multi_turn_message,
                     )
                 end_generation = generate_message(
-                    client, model_id, model_type, system_prompt, messages, max_tokens
+                    client, model_id, model_type, system_prompt, messages, max_tokens,
+                    gguf_models_config=gguf_models_config
                 )
             elif args.task == "selfcritic":
                 if args.pref_form == "explicit":
@@ -169,6 +172,7 @@ def main():
                         model_id=model_id,
                         model_type=model_type,
                         max_tokens=max_tokens,
+                        gguf_models_config=gguf_models_config,
                     )
                 else:
                     zero_shot_response, revised_messages, critic = handle_selfcritic_task_implicit(
@@ -181,6 +185,7 @@ def main():
                         model_id=model_id,
                         model_type=model_type,
                         max_tokens=max_tokens,
+                        gguf_models_config=gguf_models_config,
                     )
             elif args.task in ["zero-shot", "remind", "cot"]:
                 if args.pref_form == "explicit":
@@ -209,7 +214,8 @@ def main():
                         max_tokens=max_tokens,
                     )
                 end_generation = generate_message(
-                    client, model_id, model_type, system_prompt, messages, max_tokens
+                    client, model_id, model_type, system_prompt, messages, max_tokens,
+                    gguf_models_config=gguf_models_config
                 )
 
             if args.task == "selfcritic":

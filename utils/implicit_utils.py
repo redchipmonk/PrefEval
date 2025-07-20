@@ -124,6 +124,11 @@ def extract_conversation_to_messages(conversation, model_type):
                 messages.append({"role": "user", "content": content})
             else:
                 messages.append({"role": "assistant", "content": content})
+        elif model_type == "gguf":
+            if key == "query" or key == "user_selection":
+                messages.append({"role": "user", "content": content})
+            else:
+                messages.append({"role": "assistant", "content": content})
         else:
             raise ValueError(f"Invalid model_type: {model_type}")
 
@@ -149,6 +154,11 @@ def extract_conversation_to_msg_persona(conversation, model_type):
                     messages.append(f"<|start_header_id|>user<|end_header_id|>\n{content}<|eot_id|>")
                 else:
                     messages.append(f"<|start_header_id|>assistant<|end_header_id|>\n{content}<|eot_id|>")
+            elif model_type == "gguf":
+                if role == "user":
+                    messages.append({"role": "user", "content": content})
+                else:
+                    messages.append({"role": "assistant", "content": content})
             else:
                 raise ValueError(f"Invalid model_type: {model_type}")
     assert len(messages) == (int(turn_idx) + 1) * 2
@@ -221,6 +231,11 @@ You are a helpful AI assistant.
 [INST]
 {question}
 [/INST]"""
+    elif model_type == "gguf":
+        messages = conversation_messages.copy()
+        if turn_number > 0:
+            messages.extend(multi_inter_message)
+        messages.append({"role": "user", "content": question})
     else:
         raise ValueError(f"Invalid model type: {model_type}")
 
